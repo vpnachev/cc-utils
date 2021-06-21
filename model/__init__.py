@@ -85,6 +85,10 @@ class ConfigType:
         return self.model.type
 
 
+
+NAMED_MODEL_ELEMENT_TYPE_NAME='NamedModelElement'
+
+
 class ConfigFactory:
     '''Creates configuration model element instances from the underlying configuration source
 
@@ -404,16 +408,21 @@ class ConfigFactory:
             if (factory_method := cfg_type.factory_method()):
                 yield factory_method
 
+            # also include methods for NamedModelElement-derived types
+            elif cfg_type.cfg_type() == NAMED_MODEL_ELEMENT_TYPE_NAME:
+                yield cfg_type.cfg_type_name()
+
         yield from super().__dir__()
 
     def __getattr__(self, cfg_type_name):
         for cfg_type in self._cfg_types().values():
             if cfg_type.factory_method() == cfg_type_name:
-                break
-        else:
-            raise AttributeError(cfg_type_name)
+                return functools.partial(self._cfg_element, cfg_type_name)
 
-        return functools.partial(self._cfg_element, cfg_type_name)
+            if cfg_type.cfg_type() == NAMED_MODEL_ELEMENT_TYPE_NAME:
+                return functools.partial(self._cfg_element, cfg_type_name)
+
+        raise AttributeError(cfg_type_name)
 
     def _serialise(self):
         cfg_types = self._cfg_types()
